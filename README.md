@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Household Hub
 
-## Getting Started
+A small household calendar and shopping list app built with Next.js.
 
-First, run the development server:
+## Run Locally
 
-```bash
+```powershell
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Database
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app can use either local SQLite or Supabase Postgres.
 
-## Learn More
+For local SQLite:
 
-To learn more about Next.js, take a look at the following resources:
+```text
+DATABASE_PROVIDER="sqlite"
+data/household.db
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+For Supabase Postgres:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```text
+DATABASE_PROVIDER="postgres"
+POSTGRES_URL="postgresql://..."
+```
 
-## Deploy on Vercel
+Local database files and `.env.local` are ignored by Git.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Household Defaults
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Copy `.env.example` to `.env.local` if you want to change the household id or display name:
+
+```text
+HOUSEHOLD_ID="home"
+HOUSEHOLD_NAME="Home"
+```
+
+## Current Stack
+
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- SQLite or Supabase Postgres via API routes
+
+## Next Milestone
+
+The next production step is adding auth so the household data can be shared securely.
+
+The starter Supabase schema is in:
+
+```text
+database/supabase-schema.sql
+```
