@@ -1,4 +1,4 @@
-import { db, type CalendarEventRow, type ShoppingItemRow } from "@/lib/db";
+import type { CalendarEventRow, ShoppingItemRow } from "@/lib/db";
 import { DEFAULT_HOUSEHOLD_ID, DATABASE_PROVIDER } from "@/lib/env";
 import {
   clearCheckedPostgresShoppingItems,
@@ -35,10 +35,18 @@ export type ShoppingItemPatch = Partial<ShoppingItemInput> & {
 
 const usePostgres = DATABASE_PROVIDER === "postgres";
 
+async function getSqliteDb() {
+  const { db } = await import("@/lib/db");
+
+  return db;
+}
+
 export async function listCalendarEvents() {
   if (usePostgres) {
     return listPostgresCalendarEvents();
   }
+
+  const db = await getSqliteDb();
 
   return db
     .prepare(
@@ -55,6 +63,7 @@ export async function createCalendarEvent(input: CalendarEventInput) {
     return createPostgresCalendarEvent(input);
   }
 
+  const db = await getSqliteDb();
   const id = crypto.randomUUID();
 
   db.prepare(
@@ -77,6 +86,8 @@ export async function getCalendarEvent(id: string) {
     return getPostgresCalendarEvent(id);
   }
 
+  const db = await getSqliteDb();
+
   return db
     .prepare(
       `SELECT household_id, id, title, start, end, type
@@ -91,6 +102,7 @@ export async function updateCalendarEvent(id: string, patch: CalendarEventPatch)
     return updatePostgresCalendarEvent(id, patch);
   }
 
+  const db = await getSqliteDb();
   const current = await getCalendarEvent(id);
 
   if (!current) {
@@ -118,6 +130,8 @@ export async function deleteCalendarEvent(id: string) {
     return deletePostgresCalendarEvent(id);
   }
 
+  const db = await getSqliteDb();
+
   db.prepare("DELETE FROM calendar_events WHERE household_id = ? AND id = ?").run(
     DEFAULT_HOUSEHOLD_ID,
     id,
@@ -128,6 +142,8 @@ export async function listShoppingItems() {
   if (usePostgres) {
     return listPostgresShoppingItems();
   }
+
+  const db = await getSqliteDb();
 
   const rows = db
     .prepare(
@@ -146,6 +162,7 @@ export async function createShoppingItem(input: ShoppingItemInput) {
     return createPostgresShoppingItem(input);
   }
 
+  const db = await getSqliteDb();
   const id = crypto.randomUUID();
 
   db.prepare(
@@ -167,6 +184,8 @@ export async function getShoppingItem(id: string) {
     return getPostgresShoppingItem(id);
   }
 
+  const db = await getSqliteDb();
+
   const row = db
     .prepare(
       `SELECT household_id, id, label, quantity, category, done
@@ -183,6 +202,7 @@ export async function updateShoppingItem(id: string, patch: ShoppingItemPatch) {
     return updatePostgresShoppingItem(id, patch);
   }
 
+  const db = await getSqliteDb();
   const current = await getShoppingItem(id);
 
   if (!current) {
@@ -210,6 +230,8 @@ export async function deleteShoppingItem(id: string) {
     return deletePostgresShoppingItem(id);
   }
 
+  const db = await getSqliteDb();
+
   db.prepare("DELETE FROM shopping_items WHERE household_id = ? AND id = ?").run(
     DEFAULT_HOUSEHOLD_ID,
     id,
@@ -220,6 +242,8 @@ export async function clearCheckedShoppingItems() {
   if (usePostgres) {
     return clearCheckedPostgresShoppingItems();
   }
+
+  const db = await getSqliteDb();
 
   db.prepare("DELETE FROM shopping_items WHERE household_id = ? AND done = 1").run(
     DEFAULT_HOUSEHOLD_ID,
