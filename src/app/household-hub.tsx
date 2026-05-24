@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Home,
   ListPlus,
+  Loader2,
   Plus,
   Settings,
   ShoppingCart,
@@ -34,37 +35,7 @@ type ShoppingItem = {
   done: boolean;
 };
 
-const initialEvents: HouseholdEvent[] = [
-  {
-    id: "work-1",
-    title: "Lisa working",
-    start: "2026-05-21",
-    type: "work",
-  },
-  {
-    id: "event-1",
-    title: "Boiler check",
-    start: "2026-05-23",
-    type: "house",
-  },
-];
-
-const initialShopping: ShoppingItem[] = [
-  {
-    id: "shop-1",
-    label: "Milk",
-    quantity: "2",
-    category: "Food",
-    done: false,
-  },
-  {
-    id: "shop-2",
-    label: "Washing tablets",
-    quantity: "1",
-    category: "House",
-    done: false,
-  },
-];
+type LoadStatus = "loading" | "ready" | "error";
 
 const eventColors = {
   work: "#2563eb",
@@ -80,11 +51,11 @@ export default function HouseholdHub({
   initialDate: string;
   initialTab: Tab;
 }) {
-  const [isMounted, setIsMounted] = useState(false);
-  const [hasLoadedData, setHasLoadedData] = useState(false);
+  const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
-  const [events, setEvents] = useState<HouseholdEvent[]>(initialEvents);
-  const [shopping, setShopping] = useState<ShoppingItem[]>(initialShopping);
+  const [events, setEvents] = useState<HouseholdEvent[]>([]);
+  const [shopping, setShopping] = useState<ShoppingItem[]>([]);
   const [eventTitle, setEventTitle] = useState("");
   const [eventType, setEventType] = useState<HouseholdEvent["type"]>("house");
   const [selectedDate, setSelectedDate] = useState(initialDate);
@@ -95,33 +66,33 @@ export default function HouseholdHub({
   const [itemQuantity, setItemQuantity] = useState("1");
 
   useEffect(() => {
-    setIsMounted(true);
+    void loadHouseholdData();
   }, []);
 
-  useEffect(() => {
-    if (!isMounted) {
-      return;
-    }
+  async function loadHouseholdData() {
+    setLoadStatus("loading");
+    setLoadError(null);
 
-    async function loadData() {
+    try {
       const [eventResponse, shoppingResponse] = await Promise.all([
         fetch("/api/calendar-events"),
         fetch("/api/shopping-items"),
       ]);
 
-      if (eventResponse.ok) {
-        setEvents((await eventResponse.json()) as HouseholdEvent[]);
+      if (!eventResponse.ok || !shoppingResponse.ok) {
+        throw new Error("One or more API requests failed");
       }
 
-      if (shoppingResponse.ok) {
-        setShopping((await shoppingResponse.json()) as ShoppingItem[]);
-      }
-
-      setHasLoadedData(true);
+      setEvents((await eventResponse.json()) as HouseholdEvent[]);
+      setShopping((await shoppingResponse.json()) as ShoppingItem[]);
+      setLoadStatus("ready");
+    } catch {
+      setLoadError(
+        "Could not load household data. Check your connection and try again.",
+      );
+      setLoadStatus("error");
     }
-
-    void loadData();
-  }, [isMounted]);
+  }
 
   const pendingCount = shopping.filter((item) => !item.done).length;
   const workDays = events.filter((event) => event.type === "work").length;
@@ -355,11 +326,37 @@ export default function HouseholdHub({
     setShopping((current) => current.filter((item) => !item.done));
   }
 
-  if (!isMounted || !hasLoadedData) {
+  if (loadStatus !== "ready") {
     return (
-      <main className="min-h-screen bg-[#f6f3ee] text-stone-950">
-        <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8" />
-      </main>
+      <DataShell activeTab={activeTab} onTabChange={setActiveTab}>
+        {loadStatus === "loading" ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16">
+            <Loader2
+              aria-hidden
+              className="size-10 animate-spin text-stone-500"
+              strokeWidth={2}
+            />
+            <p className="text-sm font-medium text-stone-600">
+              Loading household data…
+            </p>
+            <div className="grid w-full max-w-xl gap-3 sm:grid-cols-3">
+              {Array.from({ length: 3 }, (_, index) => (
+                <div
+                  className="h-20 animate-pulse rounded-lg border border-stone-300 bg-white/60"
+                  key={index}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
+            <p className="max-w-md text-sm text-stone-600">{loadError}</p>
+            <MotionButton onClick={() => void loadHouseholdData()}>
+              Try again
+            </MotionButton>
+          </div>
+        )}
+      </DataShell>
     );
   }
 
@@ -850,6 +847,64 @@ function HouseholdCalendar({
         })}
       </div>
     </div>
+  );
+}
+
+function DataShell({
+  activeTab,
+  children,
+  onTabChange,
+}: {
+  activeTab: Tab;
+  children: ReactNode;
+  onTabChange: (tab: Tab) => void;
+}) {
+  return (
+    <main className="min-h-screen bg-[#f6f3ee] text-stone-950">
+      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8">
+        <header className="flex flex-col gap-4 border-b border-stone-300/80 pb-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="grid size-11 place-items-center rounded-lg bg-stone-950 text-white shadow-sm">
+              <Home size={22} strokeWidth={2.4} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold tracking-normal">
+                Household Hub
+              </h1>
+              <p className="text-sm text-stone-600">
+                Shared calendar and shopping control panel
+              </p>
+            </div>
+          </div>
+
+          <nav className="grid grid-cols-3 gap-2 rounded-lg border border-stone-300 bg-white/70 p-1 shadow-sm backdrop-blur">
+            <TabButton
+              active={activeTab === "calendar"}
+              href="/?tab=calendar"
+              icon={<CalendarDays size={18} />}
+              label="Calendar"
+              onClick={() => onTabChange("calendar")}
+            />
+            <TabButton
+              active={activeTab === "shopping"}
+              href="/?tab=shopping"
+              icon={<ShoppingCart size={18} />}
+              label="Shopping"
+              onClick={() => onTabChange("shopping")}
+            />
+            <TabButton
+              active={activeTab === "settings"}
+              href="/?tab=settings"
+              icon={<Settings size={18} />}
+              label="Settings"
+              onClick={() => onTabChange("settings")}
+            />
+          </nav>
+        </header>
+
+        {children}
+      </div>
+    </main>
   );
 }
 
